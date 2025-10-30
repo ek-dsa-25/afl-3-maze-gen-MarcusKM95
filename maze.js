@@ -18,7 +18,7 @@ class Cell {
     }
 
     draw(ctx, cellWidth) {
-        ctx.strokeStyle = '#000000';
+        ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 4;
         ctx.beginPath();
 
@@ -52,6 +52,13 @@ class Cell {
         }
 
         ctx.stroke();
+
+        //pacman tema
+        ctx.fillStyle = 'yellow';
+        const dotRadius = cellWidth / 8;
+        ctx.beginPath();
+        ctx.arc(px + cellWidth / 2, py + cellWidth / 2, dotRadius, 0, 2 * Math.PI);
+        ctx.fill();
     }
 
     // find naboerne i grid vha. this.x og this.y
@@ -133,6 +140,7 @@ class Maze {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         this.cellWidth = canvas.width / cols;
+        this.randomnessPercent = 25; //25% chance for at vælge en tilfældig celle i stedet for den senest besøgte
         this.initializeGrid();
     }
 
@@ -146,6 +154,9 @@ class Maze {
     }
 
     draw() {
+        //tilføjelse af baggrundsfarve sort i steden for hvid
+        this.ctx.fillStyle = '#000000';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         for (let i = 0; i < this.rows; i += 1) {
             for (let j = 0; j < this.cols; j += 1) {
                 this.grid[i][j].draw(this.ctx, this.cellWidth);
@@ -179,20 +190,74 @@ class Maze {
                 currentCell = randomNeighborCell;
                 currentCell.visited = true;
             } else {
-                currentCell = stack.pop();
+                // Tilføjelse af random stack pop funktion
+                if (stack.length > 0) {
+                    // Vælger med x% sandsynlighed en tilfældig celle fra stacken i stedet for den senest besøgte
+                    const shouldPickRandom = Math.random() < (this.randomnessPercent / 100);
+                    if (shouldPickRandom) {
+                        const randIndex = randomInteger(0, stack.length);
+                        currentCell = stack.splice(randIndex, 1)[0];
+                    } else {
+                        currentCell = stack.pop(); // normal LIFO
+                    }
+                } else {
+                    currentCell = null;
+                }
             }
         }
     }
+    // Fjerner vægge for at skabe loops i labyrinten
+    sprinkleLoops(loopPercent = 8) {
+        const p = loopPercent / 100;
+        const xMax = this.grid.length;
+        const yMax = this.grid[0].length;
+
+        for (let x = 0; x < xMax; x++) {
+            for (let y = 0; y < yMax; y++) {
+                // Prøv højre nabo
+                if (x + 1 < xMax && Math.random() < p) {
+                    const a = this.grid[x][y];
+                    const b = this.grid[x + 1][y];
+                    if (a.walls.right && b.walls.left) {
+                        a.punchWallDown(b);
+                    }
+                }
+                // Prøv nedenfor
+                if (y + 1 < yMax && Math.random() < p) {
+                    const a = this.grid[x][y];
+                    const b = this.grid[x][y + 1];
+                    if (a.walls.bottom && b.walls.top) {
+                        a.punchWallDown(b);
+                    }
+                }
+            }
+        }
+    }
+
+// Laver en indgang og udgang i labyrinten
+    createEntrances() {
+        const start = this.grid[0][0];
+        start.walls.top = false;
+
+        const xMax = this.grid.length;
+        const yMax = this.grid[0].length;
+        const goal = this.grid[xMax - 1][yMax - 1];
+        goal.walls.bottom = false;
+    }
 }
+
 
 document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('canvas');
     const maze = new Maze(20, 20, canvas);
 
-    // TODO: Fjern nogle af væggene på en smart måde.
     maze.generate();
+
+    maze.sprinkleLoops(10);
+    maze.createEntrances();
 
     maze.draw();
 
     console.log(maze);
 })
+
