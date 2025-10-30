@@ -164,24 +164,14 @@ class Maze {
         }
     }
 
-    generate() {
+    generateAnimated(speed = 20) {
         const start_x = randomInteger(0, this.cols);
         const start_y = randomInteger(0, this.rows);
         let currentCell = this.grid[start_x][start_y];
         let stack = [];
-
         currentCell.visited = true;
 
-        // Get unvisited neighbors
-        // If there are unvisited neighbors:
-        // - pick a random one of them
-        // - carve a hole through the wall
-        // - push current cell on stack
-        // - make that neighbor the current cell
-        // If not, make the top of stack the current cell
-        // If still not, you're done
-
-        while (currentCell != null) {
+        const step = () => {
             let unvisitedNeighbors = currentCell.unvisitedNeighbors(this.grid);
             if (unvisitedNeighbors.length > 0) {
                 const randomNeighborCell = unvisitedNeighbors[randomInteger(0, unvisitedNeighbors.length)];
@@ -190,22 +180,36 @@ class Maze {
                 currentCell = randomNeighborCell;
                 currentCell.visited = true;
             } else {
-                // Tilføjelse af random stack pop funktion
                 if (stack.length > 0) {
-                    // Vælger med x% sandsynlighed en tilfældig celle fra stacken i stedet for den senest besøgte
                     const shouldPickRandom = Math.random() < (this.randomnessPercent / 100);
                     if (shouldPickRandom) {
                         const randIndex = randomInteger(0, stack.length);
                         currentCell = stack.splice(randIndex, 1)[0];
                     } else {
-                        currentCell = stack.pop(); // normal LIFO
+                        currentCell = stack.pop();
                     }
                 } else {
-                    currentCell = null;
+                    currentCell = null; // færdig
                 }
             }
-        }
+
+            // Tegn efter hvert step
+            this.draw();
+
+            if (currentCell != null) {
+                setTimeout(step, speed); // kalder sig selv igen efter "speed" ms
+            } else {
+                // Når færdig: lav loops og indgange
+                this.sprinkleLoops(10);
+                this.createEntrances();
+                this.draw();
+                console.log("Maze generation complete!");
+            }
+        };
+
+        step(); // start animationen
     }
+
     // Fjerner vægge for at skabe loops i labyrinten
     sprinkleLoops(loopPercent = 8) {
         const p = loopPercent / 100;
@@ -251,12 +255,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('canvas');
     const maze = new Maze(20, 20, canvas);
 
-    maze.generate();
+    maze.generateAnimated(10); // 20ms per step — lower = faster
 
-    maze.sprinkleLoops(10);
-    maze.createEntrances();
-
-    maze.draw();
 
     console.log(maze);
 })
